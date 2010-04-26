@@ -15,10 +15,13 @@ def potential(p,ps,ra=4.0):
 
 def revise(c,P,data,rb=5.0):
     beta = -4.0 / rb / rb
-    pc = P[c]
-    for i in range(len(P)):
-        v = data[i] - data[c]
-        P[i] = P[i] - pc*exp(beta*np.vdot(v,v))
+    #pc = P[c]
+    vs = data - data[c]
+    P -= P[c] * np.exp(beta * np.sum(vs * vs,1))
+    #for i in range(len(P)):
+        #v = data[i] - data[c]
+        #v = vs[i]
+        #P[i] = P[i] - pc*exp(beta*np.vdot(v,v))
     
 def subclust(data,ra=0.4,rb=0.5):
     nP,L = data.shape
@@ -30,7 +33,8 @@ def subclust(data,ra=0.4,rb=0.5):
 
     firstPot = None
     while True:
-        center = max(range(nP),key=lambda i: potentials[i])
+        #center = max(range(nP),key=lambda i: potentials[i])
+        center = np.argmax(potentials)
         if firstPot is None:
             firstPot = potentials[center]
         elif potentials[center] < 0.15*firstPot:
