@@ -10,21 +10,25 @@ def GathGeva(data,c,m=2,e=1e-4):
         mm = numpy.mean(data,0)
         aa = numpy.max(numpy.abs(data - numpy.ones((N,1))*mm),0)
         v = 2*(numpy.ones((c,1))*aa)*(numpy.random.rand(c,n) - 0.5) + numpy.ones((c,1))*mm
-        
-        d = numpy.empty((N,c))
-        for j in range(c):
-            xv = data - X1*v[j]
-            d[:,j] = numpy.sum(xv*xv,1)
-        d = (d + 1e-10) ** (-1/(m-1))
-        
-        f0 = d / (numpy.array([numpy.sum(d,1)]).T*numpy.ones((1,c)))
     else:
-        f0 = c
-        c = f0.shape[1]
-        fm = f0**m
-        sumf = numpy.sum(fm,0)
+        v = c
+        c = v.shape[0]
+        
+    d = numpy.empty((N,c))
+    for j in range(c):
+        xv = data - X1*v[j]
+        d[:,j] = numpy.sum(xv*xv,1)
+    d = (d + 1e-10) ** (-1/(m-1))
+    
+    f0 = d / (numpy.array([numpy.sum(d,1)]).T*numpy.ones((1,c)))
+    #else:
+        
+        #f0 = c
+        #c = f0.shape[1]
+        #fm = f0**m
+        #sumf = numpy.sum(fm,0)
         #This is wrong, but not my fault
-        v = numpy.dot(fm,data.T) / numpy.array([sumf for i in range(n)]).T
+        #v = numpy.dot(fm,data.T) / numpy.array([sumf for i in range(n)]).T
 
     f = numpy.zeros((N,c)) # partition matrix
     i = 0                  # iteration counter
@@ -67,7 +71,7 @@ def GathGeva(data,c,m=2,e=1e-4):
         #Calculate covariance matrix
         A = numpy.dot(numpy.ones((n,1))*f[:,j].T*xv.T,xv)/sumf[j]
         ed,ev = numpy.linalg.eig(A)
-        ev = ev[:,min(range(c),key=lambda v: ed[v])]
+        ev = ev[:,min(range(ed.shape[0]),key=lambda v: ed[v])]
         P[j] = A
         V[j,:] = ev.T
         D[j,:] = ed
