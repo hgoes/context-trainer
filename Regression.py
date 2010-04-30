@@ -1,51 +1,110 @@
 import numpy as np
 from math import *
 
-def linear_regression(means,covars,training_data,c):
-    tr_len,tr_width = training_data.shape
-    count_clusters = means.shape[0]
+def matlab_2d_array(arr):
+    res = "["
+    for i in range(arr.shape[0]):
+        if i != 0:
+            res+= " ; "
+        for j in range(arr.shape[1]):
+            if j != 0:
+                res+= ", "
+            res+= str(arr[i,j])
+    res+= "]"
+    return res
+
+def debug_regression(params,training_data,fn):
+    count_clusters = 0
+    means_shape = None
+    for means,covars in params:
+        count_clusters += means.shape[0]
+        means_shape = means.shape[1]
+    vmeans = np.empty((count_clusters,means_shape))
+    i = 0
+    for means,covars in params:
+        for mean in means:
+            vmeans[i] = mean
+            i+=1
+    tr_dat_l = 0
+    for cl,dat in training_data:
+        tr_dat_l += dat.shape[0]
+    tr_dat_w = training_data[0][1].shape[1]
+    ntraining_data = np.empty((tr_dat_l,tr_dat_w+1))
+    i = 0
+    for cl,dat in training_data:
+        for ln in dat:
+            ntraining_data[i,0:tr_dat_w] = ln
+            ntraining_data[i,tr_dat_w] = cl
+            i += 1
+    with open(fn,'w') as f:
+        print >> f, "covars = [];"
+        i = 1
+        for means,covars in params:
+            for covar in covars:
+                print >> f, "covars(:,:,",i,") =",matlab_2d_array(covar),";"
+                i+=1
+        print >> f, "means =",matlab_2d_array(vmeans),";"
+        
+        print >> f, "training_data =",matlab_2d_array(ntraining_data),";"
+        print >> f, "disp(regression(means,covars,training_data));"
+
+def linear_regression(params,training_data):
+    #debug_regression(params,training_data,"test_regression.m")
+    tr_len = 0
+    tr_width = None
+    for cl,dat in training_data:
+        l,tr_width = dat.shape
+        tr_len += l
+    count_clusters = 0
+    for means,covars in params:
+        count_clusters += means.shape[0]
     
     w = np.empty((count_clusters,tr_len))
-    
-    for i in range(count_clusters):
-        sig_inv = np.linalg.inv(covars[i])
-        for j in range(tr_len):
-            dist = np.array([training_data[j] - means[i]])
-            w[i,j] = exp(-0.5*np.dot(np.dot(dist,sig_inv),dist.T))
 
-    sum_w = np.sum(w,0)
+    i = 0
+    for means,covars in params:
+        for means_i,covars_i in zip(means,covars):
+            sig_inv = np.linalg.inv(covars_i)
+            j = 0
+            for cl,dat in training_data:
+                dists = dat - means_i
+                # this is faster, but not numerically equivalent
+                #alphas = np.sum(np.dot(dists,sig_inv)*dists,1)
+                alphas = np.diag(np.dot(np.dot(dists,sig_inv),dists.T))
+                #alphas = np.diag(np.tensordot(np.dot(dists,sig_inv),dists.T,1))
+                w[i,j:j+dat.shape[0]] = np.exp(-0.5*alphas)
+                j += dat.shape[0]
+            i += 1
 
-    for i in range(count_clusters):
-        for j in range(tr_len):
-            w[i,j] /= sum_w[j]
+    w /= np.sum(w,0)
 
     B = np.empty((tr_len,count_clusters*(tr_width+1)))
-    #Btmp = np.ones((tr_len,count_clusters*(tr_width+1)))
 
     for i in range(count_clusters):
-        for j in range(tr_len):
-            B[j,(i+1)*(tr_width+1)-1] = w[i,j]
-            #Btmp[j,(i+1)*(tr_width+1)-1] -= 1.0
-            for k in range(tr_width):
-                B[j,i*(tr_width+1)+k] = w[i,j]*training_data[j,k]
-                #Btmp[j,i*(tr_width+1)+k] -= 1.0
+        j = 0
+        for cl,dat in training_data:
+            for dat_j in dat:
+                B[j,(i+1)*(tr_width+1)-1] = w[i,j]
+                B[j,i*(tr_width+1):(i+1)*(tr_width+1)-1] = dat_j * w[i,j]
+                j += 1
 
-    #print B[0:5,0:5]
-    #print np.nonzero(Btmp)
-    #print B
-    #print "count_clusters: ",count_clusters
-    #print "tr_len: ",tr_len
-    #print "tr_width: ",tr_width
-    #print "B'*B:",np.dot(B.T,B)
-
-    u = c * np.ones((1,training_data.shape[0]))
+    u = np.empty(tr_len)
+    i = 0
+    for cl,dat in training_data:
+        for j in range(dat.shape[0]):
+            u[i] = cl
+            i += 1
+    u = np.array([u])
 
     a = np.dot(np.dot(np.linalg.inv(np.dot(B.T,B)),B.T),u.T).flatten()
 
-    ra = np.empty((count_clusters,tr_width+1))
-    for i in range(count_clusters):
-        ra[i] = a[i*(tr_width+1) : (i+1)*(tr_width+1)]
+    ras = []
+    i = 0
+    for means,covars in params:
+        ra = np.empty((means.shape[0],tr_width+1))
+        for j in range(means.shape[0]):
+            ra[j] = a[i*(tr_width+1) : (i+1)*(tr_width+1)]
+            i += 1
+        ras.append(ra)
         
-    return ra
-
-#print linear_regression(np.array([[1,2,3],[2,3,4]]),np.array([[[1,2,3],[4,5,6],[7,8,9]],[[1.5,1.5,2],[6,1,9],[5,1,3]]]),np.array([[1,2,3],[4,5,6],[3,3,3]]),1)
+    return ras
