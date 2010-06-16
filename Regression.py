@@ -91,9 +91,11 @@ def linear_regression(params,training_data):
     u = np.empty(tr_len)
     i = 0
     for cl,dat in training_data:
-        for j in range(dat.shape[0]):
-            u[i] = cl
-            i += 1
+        u[i:i+dat.shape[0]] = cl
+        i += dat.shape[0]
+        #for j in range(dat.shape[0]):
+        #    u[i] = cl
+        #    i += 1
     u = np.array([u])
 
     a = np.dot(np.dot(np.linalg.inv(np.dot(B.T,B)),B.T),u.T).flatten()
