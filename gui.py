@@ -77,6 +77,7 @@ class ContextTrainer(gtk.Assistant):
         self.create_page4()
         self.connect('prepare',self.prepare_page)
         self.connect('apply',self.finish_assistant)
+        self.connect('destroy', lambda x: gtk.main_quit())
         w = 600
         phi = (1 + math.sqrt(5)) / 2
         self.set_default_size(w,int(w / phi))
@@ -277,8 +278,12 @@ class ClassifierAssoc(gtk.TreeStore):
                     mp[data[1]] = cls
             cur = self.iter_next(cur)
         return mp
-                        
-test = ContextTrainer()
-test.show_all()
 
-gtk.main()
+if __name__ == "__main__":
+    gtk.gdk.threads_init()
+    #test = ContextTrainer()
+    test = gtk.Window()
+    test.connect('destroy', lambda x: gtk.main_quit())
+    test.show_all()
+
+    gtk.main()
