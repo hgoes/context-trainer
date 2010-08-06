@@ -150,7 +150,7 @@ class ClassState:
         :type rng: :class:`float`
         """
         #clusts = subclust(normalize(self.training_data),0.4,0.5)
-        clusts = subclust(self.training_data / rng,0.4,0.5,7)
+        clusts = subclust(self.training_data / rng,0.4,0.5)
         print len(clusts),"initial clusters for class",self.name
         return np.array([self.training_data[i] for i in clusts])
     def gath_geva(self,vec):
@@ -201,85 +201,3 @@ def build_classifier(means,covars,ras):
             r = rule.ComplexRule(ra[i,:-1],ra[i,-1],mean[i],np.linalg.inv(covar[i]))
             rules.append(r)
     return rule.RuleSet(rules)
-
-def adjustTrainingData(dat,dat2,classifier):
-    add = classifier.evaluates(dat)
-    #print add
-    dat2[:,-1] = add
-    #for i in range(dat.shape[0]):
-    #    dat2[i,-1] = classifier.evaluate(dat[i])
-
-def buildFIS(training_data,iterations=2,cb=None,check_data=None):
-    """
-    Create a fuzzy inference system using a genetic algorithm
-
-    :param training_data: The training data used to generate the FIS
-    :param iterations: The algorithm can use the results from the last iteration to stabilize the resulting FIS. Specifies the amount of iterations to perform.
-    :param cb: A callback function that is called with the progress encoded as a float from 0.0 to 1.0
-    :param check_data: A data set that is used to calculate the quality of the FIS. The resulting FIS will be the one producing best results on the check data.
-    """
-    if check_data:
-        best_fis = (None,0.0)
-    fis = None
-    for it in range(iterations):
-        if cb:
-            cb(float(it)/float(iterations))
-        clusts = []
-        for cls,dat in training_data:
-            print "Clustering for class",cls,"..."
-            clust = subclust(normalize(dat),0.4,0.5)
-            print len(clust),"cluster centers"
-            clusts.append(np.array([dat[i] for i in clust]))
-        
-        def gen_fis(vecs):
-            means = []
-            covars = []
-            try:
-                for vec,(cl,dat) in zip(vecs,training_data):
-                    ggres = GathGeva(dat,vec)
-                    means.append(ggres[2])
-                    covars.append(ggres[3])
-                ras = linear_regression(zip(means,covars),training_data)
-                return build_classifier(means,covars,ras)
-            except:
-                return None
-        def eval_fis(fis):
-            res = 0.0
-            for cls,dat in training_data:
-                delt = cls - fis.evaluates(dat)
-                res += np.sum(delt**2)/dat.shape[0]
-            return 1.0/res
-        fis = evolve_fis(clusts,gen_fis,eval_fis)
-        if check_data:
-            quality = 0
-            count_all = 0
-            for cls,dat in check_data:
-                if it==0:
-                    rvec = fis.evaluates(dat)
-                else:
-                    rvec = fis.evaluates(np.hstack((dat,np.zeros((dat.shape[0],1)))))
-                rvec -= cls
-                rvec = ma.masked_inside(rvec,-0.5,0.5)
-                count_all += dat.shape[0]
-                quality += ma.count_masked(rvec)
-            
-            print "Quality:",100.0*quality/count_all
-            if quality > best_fis[1]:
-                best_fis = (fis,quality)
-        if it == 0:
-            training_data2 = []
-            for cls,dat in training_data:
-                add_arr = np.empty((dat.shape[0],1))
-                dat2 = np.concatenate((dat,add_arr),1)
-                adjustTrainingData(dat,dat2,fis)
-                training_data2.append((cls,dat2))
-            training_data = training_data2
-        else:
-            for cls,dat in training_data:
-                adjustTrainingData(dat,dat,fis)
-    if cb:
-        cb(1.0)
-    if check_data:
-        return best_fis[0]
-    else:
-        return fis

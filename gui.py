@@ -2,7 +2,6 @@ import gtk
 from annpkg.model import AnnPkg
 import gobject
 import numpy as np
-from Training import buildFIS
 import threading
 import rule
 import json
@@ -281,9 +280,7 @@ class ClassifierAssoc(gtk.TreeStore):
 
 if __name__ == "__main__":
     gtk.gdk.threads_init()
-    #test = ContextTrainer()
-    test = gtk.Window()
-    test.connect('destroy', lambda x: gtk.main_quit())
+    test = ContextTrainer()
     test.show_all()
 
     gtk.main()
