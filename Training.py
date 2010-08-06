@@ -72,6 +72,11 @@ class ClassifierState:
     def clusters(self,rng):
         return [ cls.clusters(rng) for cls in self.classes ]
     def gen_fis(self,vecs):
+        """
+        Generate a new Fuzzy Inference System by using start values for the clustering algorithm
+
+        :param vecs: A vector of vectors of initial cluster centers for the gath geva algorithm
+        """
         try:
             means = []
             covars = []
@@ -105,6 +110,12 @@ class ClassifierState:
         """
         return evolve_fis(self.clusters(rng),self.gen_fis,self.eval_fis)
     def quality_fis(self,fis,attach_dim=False):
+        """
+        Get a quality estimate for a FIS by counting the correct classifications on the check data.
+
+        :returns: A tuple with the correct classifications and the total number of check-datasets
+        :return-type: (:class:`int`,:class:`int`)
+        """
         correct = 0
         count = 0
         for cl_state in self.classes:
@@ -167,6 +178,12 @@ class ClassState:
         rvec = ma.masked_inside(rvec,-0.5,0.5)
         return (ma.count_masked(rvec),self.check_data.shape[0])
     def adjust_data(self,fis,attach_dim=False):
+        """
+        Use a FIS to adjust the last dimension of the training data with the results of the evaluation.
+
+        :param fis: The Fuzzy Inference System to be used.
+        :param attach_dim: Attach a new dimension to the training data or use the existing last one.
+        """
         res = fis.evaluates(self.training_data)
         if attach_dim:
             self.training_data = np.concatenate((self.training_data,np.array([res]).T),1)
