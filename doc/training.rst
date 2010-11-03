@@ -1,3 +1,3 @@
 .. automodule:: Training
-  :members:
-  :show-inheritance:
+   :members:
+   :show-inheritance:
