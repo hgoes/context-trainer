@@ -37,5 +37,6 @@ def evolve_fis(vecs,gen_fis,eval_fis):
     for vec in vecs:
         sel_vec = np.array([vec[i] for i in range(vec.shape[0]) if bitvec[offset+i]==1])
         rvecs.append(sel_vec)
+        offset += vec.shape[0]
 
     return gen_fis(rvecs)
