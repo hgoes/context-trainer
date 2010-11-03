@@ -11,14 +11,15 @@ import Training
 gobject.threads_init()
 
 class TrainingProgress(threading.Thread):
-    def __init__(self,mp,training_data,progress,done):
+    def __init__(self,mp,training_data,progress=None,done=None):
         threading.Thread.__init__(self)
         self.mp = mp
         self.training_data = training_data
         self.progress = progress
         self.done = done
     def cb(self,pc):
-        self.progress.set_fraction(pc)
+        if self.progress is not None:
+            self.progress.set_fraction(pc)
     def run(self):
         state = Training.TrainingState()
         self.cls_id = 0
@@ -60,7 +61,10 @@ class TrainingProgress(threading.Thread):
             #result.append(rule.Classifier(fis,memb,key))
             #self.cls_id += 1
             state.add_classifier_state(classifier_state)
-        self.done(state.buildFIS(iterations=1,cb=self.cb))
+        if self.done is not None:
+            self.done(state.buildFIS(iterations=3,cb=self.cb))
+        else:
+            state.buildFIS(iterations=3,cb=self.cb)
         
 
 class ContextTrainer(gtk.Assistant):
