@@ -172,7 +172,7 @@ class ClassState:
         else:
             dat = self.training_data[:,0:-1] / rng[0:-1]
 
-        clusts = subclust(normalize(dat),0.1,0.15,0.1,0.05) #0.4 0.5
+        clusts = subclust(normalize(dat),0.2,0.3,0.2,0.1) #0.4 0.5
 
         print len(clusts),"initial clusters for class",self.name
         if self.extended:
