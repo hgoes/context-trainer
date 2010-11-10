@@ -62,9 +62,9 @@ class TrainingProgress(threading.Thread):
             #self.cls_id += 1
             state.add_classifier_state(classifier_state)
         if self.done is not None:
-            self.done(state.buildFIS(iterations=3,cb=self.cb))
+            self.done(state.buildFIS(iterations=5,cb=self.cb))
         else:
-            state.buildFIS(iterations=3,cb=self.cb)
+            state.buildFIS(iterations=5,cb=self.cb)
         
 
 class ContextTrainer(gtk.Assistant):
