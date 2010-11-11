@@ -206,7 +206,20 @@ class ClassState:
         :rtype: (:class:`int`,:class:`int`)
         """
         if fis.dimension() == self.training_data.shape[1]:
-            dat = np.hstack((self.check_data,np.zeros((self.check_data.shape[0],1))))
+            last_res = 0.0
+            count = 0
+            for i in range(self.check_data.shape[0]):
+                last_res = fis.evaluate(np.hstack((self.check_data[i],last_res)))
+                if abs(last_res - self.id) < 0.5:
+                    count = count + 1
+            return (count,self.check_data.shape[0])
+        else:
+            rvec = fis.evaluates(self.check_data) - self.id
+            rvec = ma.masked_inside(rvec,-0.5,0.5)
+            return (ma.count_masked(rvec),self.check_data.shape[0])
+        
+        if fis.dimension() == self.training_data.shape[1]:
+            dat = np.hstack((self.check_data,self.id*np.ones((self.check_data.shape[0],1))))
         else:
             dat = self.check_data
         #if self.check_data.shape[1] == self.training_data.shape[1]:
@@ -222,16 +235,15 @@ class ClassState:
 
         :param fis: The Fuzzy Inference System to be used.
         """
-        last_res = 0.0
-        for i in range(self.training_data.shape[0]):
-            if fis.dimension() == self.training_data.shape[1]:
-                last_res = fis.evaluate(np.hstack((self.training_data[i,0:-1],last_res)))
-            else:
-                last_res = fis.evaluate(self.training_data[i,0:-1])
-            if math.isnan(last_res):
-                self.training_data[i,-1] = 0.0
-            else:
+        if fis.dimension() == self.training_data.shape[1]:
+            self.training_data[:,-1] = fis.evaluates(self.training_data[:,0:-1])
+        else:
+            last_res = 0.0
+            for i in range(self.training_data.shape[0]):
+                if math.isnan(last_res):
+                    last_res = 0.0
                 self.training_data[i,-1] = last_res
+                last_res = fis.evaluate(self.training_data[i,:-1])
     def min_range(self):
         return np.min(self.training_data,0)
     def max_range(self):
