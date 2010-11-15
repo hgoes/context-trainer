@@ -172,7 +172,7 @@ class ClassState:
         else:
             dat = self.training_data[:,0:-1] / rng[0:-1]
 
-        clusts = subclust(normalize(dat),0.2,0.3,0.2,0.1) #0.4 0.5
+        clusts = subclust(normalize(dat))
 
         print len(clusts),"initial clusters for class",self.name
         if self.extended:
@@ -236,7 +236,7 @@ class ClassState:
         :param fis: The Fuzzy Inference System to be used.
         """
         if fis.dimension() == self.training_data.shape[1]:
-            self.training_data[:,-1] = fis.evaluates(self.training_data[:,0:-1])
+            self.training_data[:,-1] = fis.evaluates(self.training_data)
         else:
             last_res = 0.0
             for i in range(self.training_data.shape[0]):
