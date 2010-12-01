@@ -10,6 +10,7 @@ from Regression import linear_regression
 from evolve import evolve_fis
 import rule
 import math
+import random
 
 class TrainingState:
     """
@@ -75,6 +76,7 @@ class ClassifierState:
     def __init__(self,name):
         self.name = name
         self.classes = []
+        self.adjust_map = None
     def add_class_state(self,st):
         self.classes.append(st)
     def clusters(self,rng):
@@ -139,9 +141,29 @@ class ClassifierState:
             correct += r
             count += c
         return (correct,count)
+    def gen_adjust_map(self,bulk_size=20):
+        self.adjust_map = []
+        offsets = [ 0 for cl in self.classes ]
+        empty = [ False for cl in self.classes ]
+        while not all(empty):
+            idx = random.randrange(len(self.classes))
+            if empty[idx]:
+                continue
+            
+            if (offsets[idx]+1)*bulk_size >= self.classes[idx].training_data_size():
+                empty[idx] = True
+                self.adjust_map.append((idx,offsets[idx]*bulk_size,
+                                        self.classes[idx].training_data_size()
+                                        -offsets[idx]*bulk_size))
+            else:
+                self.adjust_map.append((idx,offsets[idx]*bulk_size,bulk_size))
+            offsets[idx] += 1
     def adjust_data(self,fis):
-        for cl_state in self.classes:
-            cl_state.adjust_data(fis)
+        if self.adjust_map is None:
+            self.gen_adjust_map()
+        last_res = 0.0
+        for (idx,start,size) in self.adjust_map:
+            last_res = self.classes[idx].adjust_data(fis,start,size,last_res)
     def membership(self):
         return [(cl.name,cl.id) for cl in self.classes if cl.name!=None]
     def min_range(self):
@@ -163,6 +185,8 @@ class ClassState:
         self.training_data = np.hstack((tr_dat,np.zeros((tr_dat.shape[0],1))))
         self.check_data = ch_dat
         self.extended = False
+    def training_data_size(self):
+        return self.training_data.shape[0]
     def clusters(self,rng):
         """
         Use the subclustering algorithm to calculate initial clusters for this class from the training data
@@ -233,21 +257,22 @@ class ClassState:
         rvec = fis.evaluates(dat) - self.id
         rvec = ma.masked_inside(rvec,-0.5,0.5)
         return (ma.count_masked(rvec),self.check_data.shape[0])
-    def adjust_data(self,fis):
+    def adjust_data(self,fis,start,size,last_res=0.0):
         """
         Use a FIS to adjust the last dimension of the training data with the results of the evaluation.
 
         :param fis: The Fuzzy Inference System to be used.
         """
-        if fis.dimension() == self.training_data.shape[1]:
-            self.training_data[:,-1] = fis.evaluates(self.training_data)
-        else:
-            last_res = 0.0
-            for i in range(self.training_data.shape[0]):
-                if math.isnan(last_res):
-                    last_res = 0.0
-                self.training_data[i,-1] = last_res
+        cond = fis.dimension() == self.training_data.shape[1]
+        for i in range(start,start+size):
+            if math.isnan(last_res):
+                last_res = 0.0
+            self.training_data[i,-1] = last_res
+            if cond:
+                last_res = fis.evaluate(self.training_data[i])
+            else:
                 last_res = fis.evaluate(self.training_data[i,:-1])
+        return last_res
     def min_range(self):
         return np.min(self.training_data,0)
     def max_range(self):
