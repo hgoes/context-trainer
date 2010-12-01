@@ -111,7 +111,11 @@ class ClassifierState:
         #    res += cl_state.eval_fis(fis)
         #print "=>",res
         #return 1.0/res
-        correct,count = self.quality_fis(fis)
+        try:
+            correct,count = self.quality_fis(fis)
+        except Exception as err:
+            print err
+            correct = 0
         return correct
     def best_fis(self,rng):
         """
