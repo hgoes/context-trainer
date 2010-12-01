@@ -278,7 +278,6 @@ class ClassState:
     def max_range(self):
         return np.max(self.training_data,0)
     def attach_dimension(self):
-        print "Attaching new dimension"
         self.extended = True
         #self.training_data = np.hstack((self.training_data,np.zeros((self.training_data.shape[0],1))))
     def get_training_data(self):
