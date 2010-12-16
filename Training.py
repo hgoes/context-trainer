@@ -30,7 +30,7 @@ class TrainingParameter:
     def from_json(obj):
         params = {}
         if 'fis_evolution' in obj:
-            gg = obj['gath_geva']
+            gg = obj['fis_evolution']
             if 'iterations' in gg:
                 params['gg_iterations'] = gg['iterations']
             if 'generations' in gg:
