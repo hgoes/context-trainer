@@ -2,7 +2,7 @@ from pyevolve import G1DBinaryString
 from pyevolve import GSimpleGA
 import numpy as np
 
-def evolve_fis(vecs,gen_fis,eval_fis):
+def evolve_fis(vecs,gen_fis,eval_fis,generations=10,pop_size=20):
     cache = {}
     size = 0
     for vec in vecs:
@@ -26,14 +26,15 @@ def evolve_fis(vecs,gen_fis,eval_fis):
             res = 0.0
         else:
             res = eval_fis(fis)
+            
         cache[bitvec.getDecimal()] = res
         return res
 
     genome.evaluator.set(loc_fitness)
 
     ga = GSimpleGA.GSimpleGA(genome,interactiveMode=True)
-    ga.setGenerations(10)
-    ga.setPopulationSize(10)
+    ga.setGenerations(generations)
+    ga.setPopulationSize(pop_size)
     #ga.terminationCriteria.set(GSimpleGA.ConvergenceCriteria)
     ga.evolve(freq_stats=1)
 
@@ -47,3 +48,39 @@ def evolve_fis(vecs,gen_fis,eval_fis):
         offset += vec.shape[0]
 
     return gen_fis(rvecs)
+
+def bit(c):
+    if c == '0':
+        return 0
+    else:
+        return 1
+
+def evolve_bitvec(fis,eval_fis,generations,pop_size):
+    cache = {}
+    genome = G1DBinaryString.G1DBinaryString(fis.dimension()*len(fis.rules))
+
+    def set_bitvec(bitvec):
+        rvec = np.array(map(bit,bitvec.getBinary()))
+        for (i,rule) in enumerate(fis.rules):
+            rule.set_bitvec(rvec[i*fis.dimension():(i+1)*fis.dimension()].nonzero())
+
+    def loc_fitness(bitvec):
+        if bitvec.getDecimal() in cache:
+            return cache[bitvec.getDecimal()]
+        set_bitvec(bitvec)
+        res = eval_fis(fis)
+        cache[bitvec.getDecimal()] = res
+        return res
+
+    genome.evaluator.set(loc_fitness)
+
+    ga = GSimpleGA.GSimpleGA(genome,interactiveMode=True)
+    ga.setGenerations(generations)
+    ga.setPopulationSize(pop_size)
+    #ga.terminationCriteria.set(GSimpleGA.ConvergenceCriteria)
+    ga.evolve(freq_stats=1)
+
+    bitvec = ga.bestIndividual()
+    print "Evolved bitvec: ",bitvec.getBinary()
+    set_bitvec(bitvec)
+

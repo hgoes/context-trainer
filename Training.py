@@ -7,17 +7,55 @@ import numpy.ma as ma
 from SubtractiveClust import subclust,normalize
 from GathGeva import GathGeva
 from Regression import linear_regression
-from evolve import evolve_fis
+from evolve import evolve_fis,evolve_bitvec
 import rule
 import math
 import random
+import json
+
+class TrainingParameter:
+    def __init__(self,gg_iterations=2,
+                 gg_generations=10,
+                 gg_popsize=20,
+                 shuffle_size=20,
+                 bitvec_generations=10,
+                 bitvec_popsize=20):
+        self.gg_iterations = gg_iterations
+        self.gg_generations = gg_generations
+        self.gg_population_size = gg_popsize
+        self.shuffle_size = shuffle_size
+        self.bitvec_generations = bitvec_generations
+        self.bitvec_popsize = bitvec_popsize
+    @staticmethod
+    def from_json(obj):
+        params = {}
+        if 'fis_evolution' in obj:
+            gg = obj['gath_geva']
+            if 'iterations' in gg:
+                params['gg_iterations'] = gg['iterations']
+            if 'generations' in gg:
+                params['gg_generations'] = gg['generations']
+            if 'population' in gg:
+                params['gg_popsize'] = gg['population']
+        if 'training_data' in obj:
+            td = obj['training_data']
+            if 'shuffle_size' in td:
+                params['shuffle_size'] = td['shuffle_size']
+        if 'bitvec_evolution' in obj:
+            bv = obj['bitvec_evolution']
+            if 'generations' in bv:
+                params['bitvec_generations'] = bv['generations']
+            if 'population' in bv:
+                params['bitvec_popsize'] = bv['population']
+        return TrainingParameter(**params)
 
 class TrainingState:
     """
     The current state of the algorithm
     """
-    def __init__(self):
+    def __init__(self,parameter=TrainingParameter()):
         self.classifier_states = []
+        self.parameter = parameter
     def add_classifier_state(self,st):
         """
         Add a new state to the training state
@@ -26,7 +64,7 @@ class TrainingState:
         :type st: :class:`ClassifierState`
         """
         self.classifier_states.append(st)
-    def buildFIS(self,iterations=2,cb=None):
+    def buildFIS(self,cb=None):
         """
         Create a fuzzy inference system using a genetic algorithm        
 
@@ -34,6 +72,7 @@ class TrainingState:
         :type iterations: :class:`int`
         :param cb: A callback function that is called with the progress encoded as a float from 0.0 to 1.0
         """
+        iterations = self.parameter.gg_iterations
         classifiers = []
         #rng = self.max_range() - self.min_range()
         for i,cl_state in enumerate(self.classifier_states):
@@ -54,9 +93,11 @@ class TrainingState:
                         best_fis = fis
                     if it==0:
                         cl_state.attach_dimension()
-                    cl_state.adjust_data(fis)
+                    cl_state.adjust_data(fis,self.parameter.shuffle_size)
             if not best_fis:
                 return None
+            cl_state.evolve_bitvector(fis,self.parameter.bitvec_generations,
+                                      self.parameter.bitvec_popsize)
             classifiers.append(rule.Classifier(best_fis,cl_state.membership(),cl_state.name))
         if cb:
             cb(1.0)
@@ -141,7 +182,7 @@ class ClassifierState:
             correct += r
             count += c
         return (correct,count)
-    def gen_adjust_map(self,bulk_size=20):
+    def gen_adjust_map(self,bulk_size):
         self.adjust_map = []
         offsets = [ 0 for cl in self.classes ]
         empty = [ False for cl in self.classes ]
@@ -158,9 +199,9 @@ class ClassifierState:
             else:
                 self.adjust_map.append((idx,offsets[idx]*bulk_size,bulk_size))
             offsets[idx] += 1
-    def adjust_data(self,fis):
+    def adjust_data(self,fis,shuffle_size):
         if self.adjust_map is None:
-            self.gen_adjust_map()
+            self.gen_adjust_map(shuffle_size)
         last_res = 0.0
         for (idx,start,size) in self.adjust_map:
             last_res = self.classes[idx].adjust_data(fis,start,size,last_res)
@@ -173,6 +214,9 @@ class ClassifierState:
     def attach_dimension(self):
         for cl_state in self.classes:
             cl_state.attach_dimension()
+    def evolve_bitvector(self,fis,generations,pop_size):
+        evolve_bitvec(fis,self.eval_fis,generations,pop_size)
+
 
 class ClassState:
     """
@@ -218,12 +262,14 @@ class ClassState:
         else:
             return GathGeva(self.training_data[:,0:-1],vec)
     def eval_fis(self,fis):
-        if fis.dimension() == self.training_data.shape[1]:
-            delt = self.id - fis.evaluates(self.training_data)
-        else:
-            delt = self.id - fis.evaluates(self.training_data[:,0:-1])
-        print ma.count_masked(ma.masked_inside(delt,-0.5,0.5)),"/",self.training_data.shape[0]
-        return np.sum(delt*delt) / self.training_data.shape[0]
+        (correct,count) = self.quality_fis(fis)
+        return correct
+        #if fis.dimension() == self.training_data.shape[1]:
+        #    delt = self.id - fis.evaluates(self.training_data)
+        #else:
+        #    delt = self.id - fis.evaluates(self.training_data[:,0:-1])
+        #print ma.count_masked(ma.masked_inside(delt,-0.5,0.5)),"/",self.training_data.shape[0]
+        #return np.sum(delt*delt) / self.training_data.shape[0]
     def quality_fis(self,fis):
         """
         Count the correct classifications of a given FIS on the check data.
@@ -285,6 +331,8 @@ class ClassState:
             return self.training_data
         else:
             return self.training_data[:,0:-1]
+    def evolve_bitvector(self,rule):
+        evolve_bitvec(rule,self.eval_fis)
 
 def build_classifier(means,covars,ras):
     rules = []
