@@ -81,6 +81,7 @@ class ContextTrainer(gtk.Assistant):
         self.connect('prepare',self.prepare_page)
         self.connect('apply',self.finish_assistant)
         self.connect('destroy', lambda x: gtk.main_quit())
+        self.connect('cancel', lambda x: gtk.main_quit())
         w = 600
         phi = (1 + math.sqrt(5)) / 2
         self.set_default_size(w,int(w / phi))
