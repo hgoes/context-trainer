@@ -74,10 +74,10 @@ class ContextTrainer(gtk.Assistant):
                ('STRING', 0, 3)]
     def __init__(self):
         gtk.Assistant.__init__(self)
-        self.create_page1()
-        self.create_page2()
-        self.create_page3()
-        self.create_page4()
+        self.create_page_training_set()
+        self.create_page_classifier_preperation()
+        self.create_page_generating()
+        self.create_page_save()
         self.connect('prepare',self.prepare_page)
         self.connect('apply',self.finish_assistant)
         self.connect('destroy', lambda x: gtk.main_quit())
@@ -85,7 +85,7 @@ class ContextTrainer(gtk.Assistant):
         w = 600
         phi = (1 + math.sqrt(5)) / 2
         self.set_default_size(w,int(w / phi))
-    def create_page1(self):
+    def create_page_training_set(self):
         p1 = gtk.VBox()
         lbl_select = gtk.Label("Please choose a training data set. Only the annotated data from the data set will be used.")
         lbl_select.set_alignment(0.0,0.0)
@@ -108,10 +108,10 @@ class ContextTrainer(gtk.Assistant):
         self.append_page(p1)
         self.set_page_title(p1,"Data selection")
         self.chooser = training_data_selector
-        self.page1 = p1
+        self.page_training_set = p1
     def chooser_changed(self,fc):
         self.training_data = None
-        self.set_page_complete(self.page1,True)
+        self.set_page_complete(self.page_training_set,True)
     def load_ann_pkg(self):
         ann_pkg = AnnPkg.load(self.chooser.get_filename())
         mp = {}
@@ -123,20 +123,20 @@ class ContextTrainer(gtk.Assistant):
                 mp[dat[0]] = [np.array(dat[1:])]
         self.training_data = mp
     def prepare_page(self,ass,page):
-        if page == self.page1:
+        if page == self.page_training_set:
             pass
-        elif page == self.page2:
+        elif page == self.page_classifier_preperation:
             if self.training_data is None:
                 self.load_ann_pkg()
                 self.model = ClassifierAssoc(self.training_data.keys())
                 self.tv.set_model(self.model)
-            self.set_page_complete(self.page2,True)
-        elif page == self.page3:
+            self.set_page_complete(self.page_classifier_preperation,True)
+        elif page == self.page_generating:
             thr = TrainingProgress(self.model.get_mapping(),self.training_data,self.progress,self.finish_3)
             thr.start()
             
             
-    def create_page2(self):
+    def create_page_classifier_preperation(self):
         box = gtk.VBox()
         tv = gtk.TreeView()
         cr = gtk.CellRendererText()
@@ -154,7 +154,7 @@ class ContextTrainer(gtk.Assistant):
         self.append_page(box)
         self.set_page_title(box,"Classifier preperation")
         self.tv = tv
-        self.page2 = box
+        self.page_classifier_preperation = box
     def drag_data_get_data(self, treeview, context, selection, target_id,etime):
         select = treeview.get_selection()
         model,iter = select.get_selected()
@@ -205,9 +205,9 @@ class ContextTrainer(gtk.Assistant):
         self.model.add_classifier(entry.get_text())
         dialog.destroy()
     def finish_3(self,fis):
-        self.set_page_complete(self.page3,True)
+        self.set_page_complete(self.page_generating,True)
         self.fis = fis
-    def create_page3(self):
+    def create_page_generating(self):
         box = gtk.VBox()
         lbl = gtk.Label("Please wait while generating classifiers...")
         lbl.set_alignment(0.0,0.0)
@@ -220,8 +220,8 @@ class ContextTrainer(gtk.Assistant):
         self.append_page(box)
         self.set_page_title(box,"Creating classifiers")
         self.set_page_type(box,gtk.ASSISTANT_PAGE_PROGRESS)
-        self.page3 = box
-    def create_page4(self):
+        self.page_generating = box
+    def create_page_save(self):
         p4 = gtk.VBox()
         lbl_select = gtk.Label("Please provide the file to which to write the classifier. The classifier is written in JSON format.")
         lbl_select.set_alignment(0.0,0.0)
@@ -248,9 +248,9 @@ class ContextTrainer(gtk.Assistant):
         self.append_page(p4)
         self.set_page_title(p4,"Saving")
         self.set_page_type(p4,gtk.ASSISTANT_PAGE_CONFIRM)
-        self.page4 = p4
+        self.page_save = p4
     def saver_changed(self,fc):
-        self.set_page_complete(self.page4,fc.get_text() != "")
+        self.set_page_complete(self.page_save,fc.get_text() != "")
     def finish_assistant(self,ass):
         with open(self.classifier_selector.get_filename()+'/'+self.entry.get_text(),'w') as h:
             json.dump(self.fis.to_json(),h,indent=True)
