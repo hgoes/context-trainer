@@ -14,16 +14,18 @@ import random
 import json
 
 class TrainingParameter:
-    def __init__(self,gg_iterations=2,
-                 gg_generations=10,
-                 gg_popsize=20,
+    def __init__(self,gg_iterations=1,
+                 gg_generations=5,
+                 gg_popsize=10,
                  shuffle_size=20,
-                 bitvec_generations=10,
-                 bitvec_popsize=20):
+                 bitvec_enabled=True,
+                 bitvec_generations=5,
+                 bitvec_popsize=10):
         self.gg_iterations = gg_iterations
         self.gg_generations = gg_generations
         self.gg_population_size = gg_popsize
         self.shuffle_size = shuffle_size
+        self.bitvec_enabled = bitvec_enabled
         self.bitvec_generations = bitvec_generations
         self.bitvec_popsize = bitvec_popsize
     @staticmethod
@@ -43,6 +45,8 @@ class TrainingParameter:
                 params['shuffle_size'] = td['shuffle_size']
         if 'bitvec_evolution' in obj:
             bv = obj['bitvec_evolution']
+            if 'enabled' in bv:
+                params['bitvec_enabled'] = bool(bv['enabled'])
             if 'generations' in bv:
                 params['bitvec_generations'] = bv['generations']
             if 'population' in bv:
@@ -96,8 +100,9 @@ class TrainingState:
                     cl_state.adjust_data(fis,self.parameter.shuffle_size)
             if not best_fis:
                 return None
-            cl_state.evolve_bitvector(fis,self.parameter.bitvec_generations,
-                                      self.parameter.bitvec_popsize)
+            if self.parameter.bitvec_enabled:
+                cl_state.evolve_bitvector(fis,self.parameter.bitvec_generations,
+                                          self.parameter.bitvec_popsize)
             classifiers.append(rule.Classifier(best_fis,cl_state.membership(),cl_state.name))
         if cb:
             cb(1.0)

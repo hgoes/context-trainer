@@ -167,7 +167,20 @@ class ContextTrainer(gtk.Assistant):
         entry_shuffle.set_increments(1,5)
         entry_shuffle.set_value(default.shuffle_size)
         page.attach(entry_shuffle,2,3,5,6)
-        
+
+        lbl_bitvec = gtk.Label()
+        lbl_bitvec.set_markup('<b>Bitvector</b>')
+        lbl_bitvec.set_alignment(0.0,0.5)
+        page.attach(lbl_bitvec,0,3,6,7)
+
+        lbl_bv_enable = gtk.Label('Enable bitvector generation:')
+        lbl_bv_enable.set_alignment(0.0,0.5)
+        page.attach(lbl_bv_enable,1,2,7,8)
+
+        entry_bv_enable = gtk.CheckButton()
+        entry_bv_enable.set_active(default.bitvec_enabled)
+        page.attach(entry_bv_enable,2,3,7,8)
+
         self.append_page(page)
         self.set_page_title(page,"Algorithm Parameter")
         self.page_parameter = page
